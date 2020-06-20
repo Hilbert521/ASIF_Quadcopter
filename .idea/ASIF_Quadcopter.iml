@@ -6,5 +6,6 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="ASIF" />
     <orderEntry type="module" module-name="Quadcopter_simulator" />
+    <orderEntry type="module" module-name="quadcopter-simulation-master" />
   </component>
 </module>

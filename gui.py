@@ -37,8 +37,8 @@ class GUI():
         R_z = np.array([[cg, -sg, 0],
                         [sg, cg, 0],
                         [0, 0, 1]])
-        R = np.dot(R_z, np.dot(R_y, R_x))
-        return R
+        return R_z @ R_y @ R_x
+
 
     def init_plot(self):
         quad_lines = []
@@ -57,8 +57,7 @@ class GUI():
         for key in self.quads:
             R = self.rotation_matrix(self.quads[key]['orientation'])
             L = self.quads[key]['L']
-            points = np.array([[-L, 0, 0], [L, 0, 0], [0, -L, 0], [0, L, 0], [0, 0, 0], [0, 0, 0]]).T
-            points = np.dot(R, points)
+            points = R @ np.array([[-L, 0, 0], [L, 0, 0], [0, -L, 0], [0, L, 0], [0, 0, 0], [0, 0, 0]]).T
             points[0, :] += self.quads[key]['position'][0]
             points[1, :] += self.quads[key]['position'][1]
             points[2, :] += self.quads[key]['position'][2]

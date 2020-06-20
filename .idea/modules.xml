@@ -5,6 +5,7 @@
       <module fileurl="file://$PROJECT_DIR$/../ASIF/.idea/ASIF.iml" filepath="$PROJECT_DIR$/../ASIF/.idea/ASIF.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/ASIF_Quadcopter.iml" filepath="$PROJECT_DIR$/.idea/ASIF_Quadcopter.iml" />
       <module fileurl="file://$PROJECT_DIR$/../Quadcopter_simulator/.idea/Quadcopter_simulator.iml" filepath="$PROJECT_DIR$/../Quadcopter_simulator/.idea/Quadcopter_simulator.iml" />
+      <module fileurl="file://$USER_HOME$/Downloads/quadcopter-simulation-master/quadcopter-simulation-master/.idea/quadcopter-simulation-master.iml" filepath="$USER_HOME$/Downloads/quadcopter-simulation-master/quadcopter-simulation-master/.idea/quadcopter-simulation-master.iml" />
     </modules>
   </component>
 </project>

@@ -1,7 +1,6 @@
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
-import time
 import controller
 import gui
 import quadcopter
@@ -9,21 +8,32 @@ import quadcopter
 '''
 Simulation Parameters
 '''
-TIME_SCALING = 1.0  # Any positive number(Smaller is faster). 1.0->Real Time, 0.0->Run as fast as possible
-QUAD_DYNAMICS_UPDATE = 0.005  # seconds
-CONTROLLER_DYNAMICS_UPDATE = 0.002  # seconds
-dt = 0.01  # seconds
+TIME_SCALING = 1.0  # Any positive number (1.0=Real Time, 0.0=Run as fast as possible)
+QUAD_DYNAMICS_UPDATE = 0.005  # Update rate for quad dynamics, in seconds
+CONTROLLER_DYNAMICS_UPDATE = 0.002  # Update rate for controller dynamics, in seconds
+ANIMATION_UPDATE = 0.01  # Update rate for animation, in seconds
+time_horizon = 1  # Time horizon (seconds) over which the simulator simulates dynamics every update
+plot_quad_trail = True  # If true, the simulator will plot the actual trajectory of the quadcopter in blue
+plot_sim_trail = True  # If true, the simulator will plot the predicted trajectory some time ahead in red
+display_obstacles = False  # If true, the simulator will display obstacles
 
 '''
 Quadcopter Parameters
 '''
-# Set goals to go to
-GOALS = [(2, 2, 2)]
+# Set target sequences of waypoints and yaws to go to
+WAYPOINTS = [(2, 2, 4)]
 YAWS = [0]
-# Define the quadcopters
+
+# Define quadcopter properties
 QUADCOPTER = {
-    'q1': {'position': [1, 0, 4], 'orientation': [0, 0, 0], 'L': 0.3, 'r': 0.1, 'prop_size': [10, 4.5], 'weight': 1.2}}
-# Controller parameters
+    'q1': {'position': [1, 1, 1],
+           'orientation': [0, 0, 0],
+           'L': 0.3,
+           'r': 0.1,
+           'prop_size': [10, 4.5],
+           'weight': 1.2}}
+
+# PID Controller parameters
 CONTROLLER_PARAMETERS = {'Motor_limits': [4000, 9000],
                          'Tilt_limits': [-10, 10],
                          'Yaw_Control_Limits': [-900, 900],
@@ -35,53 +45,16 @@ CONTROLLER_PARAMETERS = {'Motor_limits': [4000, 9000],
                          }
 
 # Make objects for quadcopter, gui and controller
-quad = quadcopter.Quadcopter(QUADCOPTER)
+quad = quadcopter.Quadcopter(QUADCOPTER, time_horizon=time_horizon)
 ctrl = controller.Controller_PID_Point2Point(quad.get_state, quad.get_time, quad.set_motor_speeds,
                                              params=CONTROLLER_PARAMETERS, quad_identifier='q1')
 quad.set_controller(ctrl)
-end_state = quad.simulate_dynamics(1)
-x, y, z = end_state[-1][0:3]
-t = time.time()
-i = 0
-for _ in range(100):
-    quad.simulate_dynamics(1)
-print((time.time() - t)/100)
 
 # Start the threads
 quad.start_thread(dt=QUAD_DYNAMICS_UPDATE, time_scaling=TIME_SCALING)
 ctrl.start_thread(update_rate=CONTROLLER_DYNAMICS_UPDATE, time_scaling=TIME_SCALING)
-
-'''
-Plot Setup
-'''
-fig = plt.figure()
-# Make top row into one axes
-
-ax_quadcopter = fig.add_subplot(projection='3d')
-
-# Creat Obstacle visuals
-xs, ys, zs = np.indices((4, 1, 5))
-voxel = (xs < 4) & (ys < 0.5) & (zs < 5)
-ax_quadcopter.voxels(voxel, facecolors='red', edgecolor='k')
-
-ui = gui.GUI(quads=QUADCOPTER, ax=ax_quadcopter)
-ax_quadcopter.view_init(elev=20, azim=10)
-point_start, = ax_quadcopter.plot([1], [0], [4], 'go')
-point_end, = ax_quadcopter.plot([x], [y], [z], 'ro')
-
-'''
-Functions
-'''
-
-def animate(i):
-    for goal, y in zip(GOALS, YAWS):
-        ctrl.update_target(goal)
-        ctrl.update_yaw_target(y)
-        ui.quads['q1']['position'] = quad.get_position('q1')
-        ui.quads['q1']['orientation'] = quad.get_orientation('q1')
-    quad_1, quad_2, quad_3 = ui.update()
-    return quad_1, quad_2, quad_3, point_start, point_end
-
-
-ani = animation.FuncAnimation(fig, animate, interval=0.01, blit=True)
+for goal, y in zip(WAYPOINTS, YAWS):
+    ctrl.update_target(goal)
+    ctrl.update_yaw_target(y)
+ui = gui.GUI(QUADCOPTER, quad, display_obstacles, plot_sim_trail, plot_quad_trail)
 plt.show()

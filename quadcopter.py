@@ -1,10 +1,11 @@
 import numpy as np
 import math
 import scipy.integrate
-import time
 import datetime
 import time
 import threading
+import utils
+from profilehooks import profile
 
 '''
 Originally from https://github.com/abhijitmajumdar/Quadcopter_simulator
@@ -23,21 +24,23 @@ class Propeller():
         self.speed = speed
         # From http://www.electricrcaircraftguy.com/2013/09/propeller-static-dynamic-thrust-equation.html
         self.thrust = 4.392e-8 * self.speed * math.pow(self.dia, 3.5) / (math.sqrt(self.pitch))
-        self.thrust = self.thrust * (4.23e-4 * self.speed * self.pitch)
+        self.thrust *= (4.23e-4 * self.speed * self.pitch)
         if self.thrust_unit == 'Kg':
-            self.thrust = self.thrust * 0.101972
+            self.thrust *= 0.101972
 
 
 class Quadcopter():
     # State space representation: [x y z x_dot y_dot z_dot theta phi gamma theta_dot phi_dot gamma_dot]
     # From Quadcopter Dynamics, Simulation, and Control by Andrew Gibiansky
-    def __init__(self, quads, gravity=9.81, b=0.0245):
+    def __init__(self, quads, gravity=9.81, b=0.0245, time_horizon=1):
         self.quads = quads
         self.g = gravity
         self.b = b
         self.thread_object = None
+        self.time_horizon = time_horizon
         self.ode = scipy.integrate.ode(self.state_dot).set_integrator('vode', nsteps=500, method='bdf')
         self.controller = None
+        self.last_sim_state = []
         self.time = datetime.datetime.now()
         for key in self.quads:
             self.quads[key]['state'] = np.zeros(12)
@@ -57,27 +60,6 @@ class Quadcopter():
             self.quads[key]['invI'] = np.linalg.inv(self.quads[key]['I'])
         self.run = True
 
-    def rotation_matrix(self, angles):
-        ct = math.cos(angles[0])
-        cp = math.cos(angles[1])
-        cg = math.cos(angles[2])
-        st = math.sin(angles[0])
-        sp = math.sin(angles[1])
-        sg = math.sin(angles[2])
-        R_x = np.array([[1, 0, 0],
-                        [0, ct, -st],
-                        [0, st, ct]])
-        R_y = np.array([[cp, 0, sp],
-                        [0, 1, 0],
-                        [-sp, 0, cp]])
-        R_z = np.array([[cg, -sg, 0],
-                        [sg, cg, 0],
-                        [0, 0, 1]])
-        return R_z @ R_y @ R_x
-
-    def wrap_angle(self, val):
-        return (val + np.pi) % (2 * np.pi) - np.pi
-
     def set_controller(self, controller):
         self.controller = controller
 
@@ -88,7 +70,7 @@ class Quadcopter():
 
         # The acceleration
         x_dotdot = np.array([0, 0, -self.quads[key]['weight'] * self.g]) + \
-                   np.dot(self.rotation_matrix(self.quads[key]['state'][6:9]),
+                   np.dot(utils.rotation_matrix(self.quads[key]['state'][6:9]),
                           np.array([0, 0, (self.quads[key]['m1'].thrust + self.quads[key]['m2'].thrust
                                            + self.quads[key]['m3'].thrust + self.quads[key]['m4'].thrust)])) / \
                    self.quads[key]['weight']
@@ -111,12 +93,12 @@ class Quadcopter():
         state_dot[11] = omega_dot[2]
         return state_dot
 
-    def state_dot_simulation(self, t, state, key0,key1):
-        key = key0+key1
+    def state_dot_simulation(self, t, state, key0, key1):
+        key = key0 + key1
         control_input = self.control(state)
         u = 4.392e-8 * control_input * math.pow(self.quads[key]['prop_size'][0], 3.5) / math.sqrt(
             self.quads[key]['prop_size'][1])
-        u = u * (4.23e-4 * control_input * self.quads[key]['prop_size'][1])
+        u *= (4.23e-4 * control_input * self.quads[key]['prop_size'][1])
         m1, m2, m3, m4 = u
         state_dot = np.zeros(12)
         # The velocities(t+1 x_dots equal the t x_dots)
@@ -125,7 +107,7 @@ class Quadcopter():
         state_dot[2] = state[5]
         # The acceleration
         x_dotdot = np.array([0, 0, -self.quads[key]['weight'] * self.g]) + \
-                   self.rotation_matrix(state[6:9]) @ \
+                   utils.rotation_matrix(state[6:9]) @ \
                    np.array([0, 0, sum(u)]) / self.quads[key]['weight']
         state_dot[3] = x_dotdot[0]
         state_dot[4] = x_dotdot[1]
@@ -146,22 +128,27 @@ class Quadcopter():
         return state_dot
 
     def update(self, dt):
+        self.simulate_dynamics(self.time_horizon)
         for key in self.quads:
             self.ode.set_initial_value(self.quads[key]['state'], 0).set_f_params(key)
             self.quads[key]['state'] = self.ode.integrate(self.ode.t + dt)
-            self.quads[key]['state'][6:9] = self.wrap_angle(self.quads[key]['state'][6:9])
+            self.quads[key]['state'][6:9] = utils.wrap_angle(self.quads[key]['state'][6:9])
 
     def control(self, state):
+        """Return control inputs for quadcopter, given its current state"""
         return self.controller.update_sim(state)
 
-    def simulate_dynamics(self, totalTime):
+    def simulate_dynamics(self, total_time):
+        """Simulate quadcopter dynamics over finite time horizon and return final states"""
         states = []
         for key in self.quads:
-            sol = scipy.integrate.solve_ivp(self.state_dot_simulation, [0, totalTime],
-                                            np.array(self.quads[key]['state']), args=(str(key)), t_eval=[totalTime])
-            final_state = sol.y[:,0]
-            final_state[6:9] = self.wrap_angle(final_state[6:9])
+            self.controller.reset()
+            sol = scipy.integrate.solve_ivp(self.state_dot_simulation, [0, total_time],
+                                            np.array(self.quads[key]['state']), args=(str(key)), t_eval=[total_time])
+            final_state = sol.y[:, 0]
+            final_state[6:9] = utils.wrap_angle(final_state[6:9])
             states.append(final_state)
+        self.last_sim_state = states[0]
         return states
 
     def set_motor_speeds(self, quad_name, speeds):
@@ -201,7 +188,6 @@ class Quadcopter():
             time.sleep(0)
             self.time = datetime.datetime.now()
             if (self.time - last_update).total_seconds() > rate:
-                self.simulate_dynamics(1)
                 self.update(dt)
                 last_update = self.time
 

@@ -2,7 +2,7 @@ import numpy as np
 import math
 import time
 import threading
-import datetime
+import utils
 
 '''
 Originally from https://github.com/abhijitmajumdar/Quadcopter_simulator
@@ -44,16 +44,13 @@ class Controller_PID_Point2Point():
         self.yaw_target = 0.0
         self.run = True
 
-    def wrap_angle(self, val):
-        return (val + np.pi) % (2 * np.pi) - np.pi
-
     def update(self):
         [dest_x, dest_y, dest_z] = self.target
         [x, y, z, x_dot, y_dot, z_dot, theta, phi, gamma, theta_dot, phi_dot, gamma_dot] = self.get_state(
             self.quad_identifier)
-        theta = self.wrap_angle(theta)
-        phi = self.wrap_angle(phi)
-        gamma = self.wrap_angle(gamma)
+        theta = utils.wrap_angle(theta)
+        phi = utils.wrap_angle(phi)
+        gamma = utils.wrap_angle(gamma)
         x_error = dest_x - x
         y_error = dest_y - y
         z_error = dest_z - z
@@ -74,7 +71,7 @@ class Controller_PID_Point2Point():
                                                                                                           1])
         theta_error = dest_theta - theta
         phi_error = dest_phi - phi
-        gamma_dot_error = (self.YAW_RATE_SCALER * self.wrap_angle(dest_gamma - gamma)) - gamma_dot
+        gamma_dot_error = (self.YAW_RATE_SCALER * utils.wrap_angle(dest_gamma - gamma)) - gamma_dot
         self.thetai_term += self.ANGULAR_I[0] * theta_error
         self.phii_term += self.ANGULAR_I[1] * phi_error
         self.gammai_term += self.ANGULAR_I[2] * gamma_dot_error
@@ -88,14 +85,13 @@ class Controller_PID_Point2Point():
         m4 = throttle - y_val - z_val
         M = np.clip([m1, m2, m3, m4], self.MOTOR_LIMITS[0], self.MOTOR_LIMITS[1])
         self.actuate_motors(self.quad_identifier, M)
-        return M
 
     def update_sim(self, state):
         [dest_x, dest_y, dest_z] = self.target
         [x, y, z, x_dot, y_dot, z_dot, theta, phi, gamma, theta_dot, phi_dot, gamma_dot] = state
-        theta = self.wrap_angle(theta)
-        phi = self.wrap_angle(phi)
-        gamma = self.wrap_angle(gamma)
+        theta = utils.wrap_angle(theta)
+        phi = utils.wrap_angle(phi)
+        gamma = utils.wrap_angle(gamma)
         x_error = dest_x - x
         y_error = dest_y - y
         z_error = dest_z - z
@@ -116,13 +112,13 @@ class Controller_PID_Point2Point():
                                                                                                           1])
         theta_error = dest_theta - theta
         phi_error = dest_phi - phi
-        gamma_dot_error = (self.YAW_RATE_SCALER * self.wrap_angle(dest_gamma - gamma)) - gamma_dot
+        gamma_dot_error = (self.YAW_RATE_SCALER * utils.wrap_angle(dest_gamma - gamma)) - gamma_dot
         self.thetai_term_sim += self.ANGULAR_I[0] * theta_error
         self.phii_term_sim += self.ANGULAR_I[1] * phi_error
         self.gammai_term_sim += self.ANGULAR_I[2] * gamma_dot_error
-        x_val = self.ANGULAR_P[0] * (theta_error) + self.ANGULAR_D[0] * (-theta_dot) + self.thetai_term_sim
-        y_val = self.ANGULAR_P[1] * (phi_error) + self.ANGULAR_D[1] * (-phi_dot) + self.phii_term_sim
-        z_val = self.ANGULAR_P[2] * (gamma_dot_error) + self.gammai_term_sim
+        x_val = self.ANGULAR_P[0] * theta_error + self.ANGULAR_D[0] * (-theta_dot) + self.thetai_term_sim
+        y_val = self.ANGULAR_P[1] * phi_error + self.ANGULAR_D[1] * (-phi_dot) + self.phii_term_sim
+        z_val = self.ANGULAR_P[2] * gamma_dot_error + self.gammai_term_sim
         z_val = np.clip(z_val, self.YAW_CONTROL_LIMITS[0], self.YAW_CONTROL_LIMITS[1])
         m1 = throttle + x_val + z_val
         m2 = throttle + y_val - z_val
@@ -135,7 +131,7 @@ class Controller_PID_Point2Point():
         self.target = target
 
     def update_yaw_target(self, target):
-        self.yaw_target = self.wrap_angle(target)
+        self.yaw_target = utils.wrap_angle(target)
 
     def thread_run(self, update_rate, time_scaling):
         update_rate = update_rate * time_scaling
@@ -153,6 +149,14 @@ class Controller_PID_Point2Point():
 
     def stop_thread(self):
         self.run = False
+
+    def reset(self):
+        self.xi_term_sim = 0
+        self.yi_term_sim = 0
+        self.zi_term_sim = 0
+        self.thetai_term_sim = 0
+        self.phii_term_sim = 0
+        self.gammai_term_sim = 0
 
 
 class Controller_PID_Velocity(Controller_PID_Point2Point):
@@ -180,7 +184,7 @@ class Controller_PID_Velocity(Controller_PID_Point2Point):
                                                                                                           1])
         theta_error = dest_theta - theta
         phi_error = dest_phi - phi
-        gamma_dot_error = (self.YAW_RATE_SCALER * self.wrap_angle(dest_gamma - gamma)) - gamma_dot
+        gamma_dot_error = (self.YAW_RATE_SCALER * utils.wrap_angle(dest_gamma - gamma)) - gamma_dot
         self.thetai_term += self.ANGULAR_I[0] * theta_error
         self.phii_term += self.ANGULAR_I[1] * phi_error
         self.gammai_term += self.ANGULAR_I[2] * gamma_dot_error

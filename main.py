@@ -1,6 +1,3 @@
-import matplotlib.animation as animation
-import matplotlib.pyplot as plt
-import numpy as np
 import controller
 import gui
 import quadcopter
@@ -16,6 +13,7 @@ time_horizon = 1  # Time horizon (seconds) over which the simulator simulates dy
 plot_quad_trail = True  # If true, the simulator will plot the actual trajectory of the quadcopter in blue
 plot_sim_trail = True  # If true, the simulator will plot the predicted trajectory some time ahead in red
 display_obstacles = False  # If true, the simulator will display obstacles
+save = False  # If true, saves animation as an mp4, else it is displayed
 
 '''
 Quadcopter Parameters
@@ -26,7 +24,7 @@ YAWS = [0]
 
 # Define quadcopter properties
 QUADCOPTER = {
-    'q1': {'position': [1, 1, 1],
+    'q1': {'position': [3, 3, 1],
            'orientation': [0, 0, 0],
            'L': 0.3,
            'r': 0.1,
@@ -56,5 +54,4 @@ ctrl.start_thread(update_rate=CONTROLLER_DYNAMICS_UPDATE, time_scaling=TIME_SCAL
 for goal, y in zip(WAYPOINTS, YAWS):
     ctrl.update_target(goal)
     ctrl.update_yaw_target(y)
-ui = gui.GUI(QUADCOPTER, quad, display_obstacles, plot_sim_trail, plot_quad_trail)
-plt.show()
+ui = gui.GUI(QUADCOPTER, quad, display_obstacles, plot_sim_trail, plot_quad_trail, save)

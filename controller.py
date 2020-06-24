@@ -8,7 +8,6 @@ import utils
 Originally from https://github.com/abhijitmajumdar/Quadcopter_simulator
 '''
 
-
 class Controller_PID_Point2Point():
     def __init__(self, get_state, get_time, actuate_motors, params, quad_identifier):
         self.quad_identifier = quad_identifier
@@ -151,12 +150,12 @@ class Controller_PID_Point2Point():
         self.run = False
 
     def reset(self):
-        self.xi_term_sim = 0
-        self.yi_term_sim = 0
-        self.zi_term_sim = 0
-        self.thetai_term_sim = 0
-        self.phii_term_sim = 0
-        self.gammai_term_sim = 0
+        self.xi_term_sim = self.xi_term
+        self.yi_term_sim = self.yi_term
+        self.zi_term_sim = self.zi_term
+        self.thetai_term_sim = self.thetai_term
+        self.phii_term_sim = self.phii_term
+        self.gammai_term_sim = self.gammai_term
 
 
 class Controller_PID_Velocity(Controller_PID_Point2Point):

@@ -23,8 +23,8 @@ class Propeller():
     def set_speed(self, speed):
         self.speed = speed
         # From http://www.electricrcaircraftguy.com/2013/09/propeller-static-dynamic-thrust-equation.html
-        self.thrust = 4.392e-8 * self.speed * math.pow(self.dia, 3.5) / (math.sqrt(self.pitch))
-        self.thrust *= (4.23e-4 * self.speed * self.pitch)
+        self.thrust = 4.392e-8 * self.speed * math.pow(self.dia, 3.5) / (math.sqrt(self.pitch)) * \
+                      4.23e-4 * self.speed * self.pitch
         if self.thrust_unit == 'Kg':
             self.thrust *= 0.101972
 
@@ -97,8 +97,7 @@ class Quadcopter():
         key = key0 + key1
         control_input = self.control(state)
         u = 4.392e-8 * control_input * math.pow(self.quads[key]['prop_size'][0], 3.5) / math.sqrt(
-            self.quads[key]['prop_size'][1])
-        u *= (4.23e-4 * control_input * self.quads[key]['prop_size'][1])
+            self.quads[key]['prop_size'][1]) * (4.23e-4 * control_input * self.quads[key]['prop_size'][1])
         m1, m2, m3, m4 = u
         state_dot = np.zeros(12)
         # The velocities(t+1 x_dots equal the t x_dots)

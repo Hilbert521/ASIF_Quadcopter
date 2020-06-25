@@ -5,7 +5,6 @@ import datetime
 import time
 import threading
 import utils
-from profilehooks import profile
 
 '''
 Originally from https://github.com/abhijitmajumdar/Quadcopter_simulator
@@ -93,8 +92,7 @@ class Quadcopter():
         state_dot[11] = omega_dot[2]
         return state_dot
 
-    def state_dot_simulation(self, t, state, key0, key1):
-        key = key0 + key1
+    def state_dot_simulation(self, t, state, key):
         control_input = self.control(state)
         u = 4.392e-8 * control_input * math.pow(self.quads[key]['prop_size'][0], 3.5) / math.sqrt(
             self.quads[key]['prop_size'][1]) * (4.23e-4 * control_input * self.quads[key]['prop_size'][1])
@@ -143,11 +141,11 @@ class Quadcopter():
         for key in self.quads:
             self.controller.reset()
             sol = scipy.integrate.solve_ivp(self.state_dot_simulation, [0, total_time],
-                                            np.array(self.quads[key]['state']), args=(str(key)), t_eval=[total_time])
+                                            np.array(self.quads[key]['state']), args=(str(key),), t_eval=[total_time])
             final_state = sol.y[:, 0]
             final_state[6:9] = utils.wrap_angle(final_state[6:9])
             states.append(final_state)
-        self.last_sim_state = states[0]
+        self.last_sim_state.append(states[0])
         return states
 
     def set_motor_speeds(self, quad_name, speeds):

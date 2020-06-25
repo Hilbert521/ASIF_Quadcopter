@@ -9,7 +9,7 @@ TIME_SCALING = 1.0  # Any positive number (1.0=Real Time, 0.0=Run as fast as pos
 QUAD_DYNAMICS_UPDATE = 0.005  # Update rate for quad dynamics, in seconds
 CONTROLLER_DYNAMICS_UPDATE = 0.002  # Update rate for controller dynamics, in seconds
 ANIMATION_UPDATE = 0.01  # Update rate for animation, in seconds
-time_horizon = 1  # Time horizon (seconds) over which the simulator simulates dynamics every update
+time_horizon = 0.5  # Time horizon (seconds) over which the simulator simulates dynamics every update
 plot_quad_trail = True  # If true, the simulator will plot the actual trajectory of the quadcopter in blue
 plot_sim_trail = True  # If true, the simulator will plot the predicted trajectory some time ahead in red
 display_obstacles = False  # If true, the simulator will display obstacles

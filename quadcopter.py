@@ -39,7 +39,6 @@ class Quadcopter():
         self.time_horizon = time_horizon
         self.ode = scipy.integrate.ode(self.state_dot).set_integrator('vode', nsteps=500, method='bdf')
         self.controller = None
-        self.last_sim_state = []
         self.time = datetime.datetime.now()
         for key in self.quads:
             self.quads[key]['state'] = np.zeros(12)
@@ -57,6 +56,7 @@ class Quadcopter():
                     4 * self.quads[key]['weight'] * self.quads[key]['L'] ** 2)
             self.quads[key]['I'] = np.array([[ixx, 0, 0], [0, iyy, 0], [0, 0, izz]])
             self.quads[key]['invI'] = np.linalg.inv(self.quads[key]['I'])
+        self.last_sim_state = np.array([self.quads['q1']['state']])
         self.run = True
 
     def set_controller(self, controller):
@@ -141,11 +141,11 @@ class Quadcopter():
         for key in self.quads:
             self.controller.reset()
             sol = scipy.integrate.solve_ivp(self.state_dot_simulation, [0, total_time],
-                                            np.array(self.quads[key]['state']), args=(str(key),), t_eval=[total_time])
+                                            self.quads[key]['state'], args=(str(key),), t_eval=[total_time])
             final_state = sol.y[:, 0]
             final_state[6:9] = utils.wrap_angle(final_state[6:9])
             states.append(final_state)
-        self.last_sim_state.append(states[0])
+        self.last_sim_state = np.vstack((self.last_sim_state, states[0]))
         return states
 
     def set_motor_speeds(self, quad_name, speeds):

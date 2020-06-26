@@ -1,8 +1,8 @@
 import numpy as np
 import utils
 import matplotlib
-
 matplotlib.use('TKAgg')
+
 import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d.axes3d as Axes3D
 import matplotlib.animation as animation
@@ -34,7 +34,8 @@ class GUI():
         self.x, self.y, self.z = [], [], []
         # Create definitions for actual trail, and simulated trails
         self.trail, = self.ax.plot([], [], [], '--', c='blue', markersize=2)
-        self.sim_trail, = self.ax.plot([], [], [], '.', c='red', markersize=2)
+        self.sim_trail, = self.ax.plot([], [], [], '.', c='red', markersize=2, markevery=4)
+        self.artists = [self.sim_trail, self.trail]
         if self.display_obstacles:
             xs, ys, zs = np.indices((4, 1, 5))
             voxel = (xs < 4) & (ys < 0.5) & (zs < 5)
@@ -44,10 +45,13 @@ class GUI():
             self.quads[key]['l1'], = self.ax.plot([], [], [], color='blue', linewidth=2)
             self.quads[key]['l2'], = self.ax.plot([], [], [], color='red', linewidth=2)
             self.quads[key]['hub'], = self.ax.plot([], [], [], marker='o', color='green', markersize=6)
-
-        self.ax.view_init(elev=40, azim=40)
+            self.artists.append(self.quads[key]['l1'])
+            self.artists.append(self.quads[key]['l2'])
+            self.artists.append(self.quads[key]['hub'])
+        self.artists = tuple(self.artists)
+        self.ax.view_init(elev=30, azim=10)
         self.ani = animation.FuncAnimation(self.fig, self.update, frames=400, init_func=None,
-                                           interval=10)
+                                           interval=10, blit=True)
         if save:
             # Interval : Amount of time, in ms between generated frames
             # Frames: Number of frames to produce
@@ -80,8 +84,9 @@ class GUI():
                 self.trail.set_data_3d(self.x, self.y, self.z)
 
             if self.plot_sim_trail:
-                sim = np.array(self.quad.last_sim_state)
+                sim = self.quad.last_sim_state
                 sim_x = sim[:, 0]
                 sim_y = sim[:, 1]
                 sim_z = sim[:, 2]
                 self.sim_trail.set_data_3d(sim_x, sim_y, sim_z)
+        return self.artists

@@ -22,7 +22,8 @@ class GUI():
         self.plot_sim_trail = plot_sim_trail
         self.plot_quad_trail = plot_quad_trail
         self.fig = plt.figure()
-        self.ax = Axes3D.Axes3D(self.fig)
+        self.ax = self.fig.add_subplot(1, 1, 1, projection='3d')
+        #self.ax_graph = self.fig.add_subplot(2,1,2)
         self.ax.set_xlim3d([0.0, 4.0])
         self.ax.set_xlabel('X')
         self.ax.set_ylim3d([0.0, 4.0])

@@ -1,5 +1,5 @@
 import numpy as np
-
+import math
 
 def rotation_matrix(angles):
     """
@@ -31,3 +31,14 @@ def wrap_angle(angle):
     :return: Constrained angle
     """
     return (angle + np.pi) % (2 * np.pi) - np.pi
+
+
+def thrust(speed, pitch, diameter):
+    """
+    From http://www.electricrcaircraftguy.com/2013/09/propeller-static-dynamic-thrust-equation.html
+    :param speed: RPM of the motor
+    :param pitch: Propeller pitch (tilt), in inches
+    :param diameter: Propeller diameter, in inches
+    :return: Thrust of the propeller, in N
+    """
+    return 4.392e-8 * speed * math.pow(diameter, 3.5) / (math.sqrt(pitch)) * 4.23e-4 * speed * pitch

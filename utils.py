@@ -1,6 +1,7 @@
 import numpy as np
 import math
 
+
 def rotation_matrix(angles):
     """
     Calculates rotation matrix in ZYX form

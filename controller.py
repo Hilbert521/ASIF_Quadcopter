@@ -8,24 +8,21 @@ import utils
 Originally from https://github.com/abhijitmajumdar/Quadcopter_simulator
 '''
 
-class Controller_PID_Point2Point():
+
+class Controller_PID_Point2Point:
     def __init__(self, get_state, get_time, actuate_motors, params, quad_identifier):
         self.quad_identifier = quad_identifier
         self.actuate_motors = actuate_motors
         self.get_state = get_state
         self.get_time = get_time
         self.MOTOR_LIMITS = params['Motor_limits']
-        self.TILT_LIMITS = [(params['Tilt_limits'][0] / 180.0) * 3.14, (params['Tilt_limits'][1] / 180.0) * 3.14]
+        self.TILT_LIMITS = [(params['Tilt_limits'][0] / 180.0) * np.pi, (params['Tilt_limits'][1] / 180.0) * np.pi]
         self.YAW_CONTROL_LIMITS = params['Yaw_Control_Limits']
         self.Z_LIMITS = [self.MOTOR_LIMITS[0] + params['Z_XY_offset'], self.MOTOR_LIMITS[1] - params['Z_XY_offset']]
-        self.LINEAR_P = params['Linear_PID']['P']
-        self.LINEAR_I = params['Linear_PID']['I']
-        self.LINEAR_D = params['Linear_PID']['D']
+        self.LINEAR_P, self.LINEAR_I, self.LINEAR_D = params['Linear_PID'].values()
+        self.ANGULAR_P, self.ANGULAR_I, self.ANGULAR_D = params['Angular_PID'].values()
         self.LINEAR_TO_ANGULAR_SCALER = params['Linear_To_Angular_Scaler']
         self.YAW_RATE_SCALER = params['Yaw_Rate_Scaler']
-        self.ANGULAR_P = params['Angular_PID']['P']
-        self.ANGULAR_I = params['Angular_PID']['I']
-        self.ANGULAR_D = params['Angular_PID']['D']
         self.xi_term = 0
         self.yi_term = 0
         self.zi_term = 0
@@ -43,22 +40,26 @@ class Controller_PID_Point2Point():
         self.yaw_target = 0.0
         self.run = True
 
-    def update(self):
-        [dest_x, dest_y, dest_z] = self.target
-        [x, y, z, x_dot, y_dot, z_dot, theta, phi, gamma, theta_dot, phi_dot, gamma_dot] = self.get_state(
-            self.quad_identifier)
-        theta = utils.wrap_angle(theta)
-        phi = utils.wrap_angle(phi)
-        gamma = utils.wrap_angle(gamma)
+    def update(self, state=None, sim=False):
+        if sim:
+            xi, yi, zi = self.xi_term_sim, self.yi_term_sim, self.zi_term_sim
+            thetai, phii, gammai = self.thetai_term_sim, self.phii_term_sim, self.gammai_term_sim
+            x, y, z, x_dot, y_dot, z_dot, theta, phi, gamma, theta_dot, phi_dot, gamma_dot = state
+        else:
+            xi, yi, zi = self.xi_term, self.yi_term, self.zi_term
+            thetai, phii, gammai = self.thetai_term, self.phii_term, self.gammai_term
+            x, y, z, x_dot, y_dot, z_dot, theta, phi, gamma, theta_dot, phi_dot, gamma_dot = self.get_state(
+                self.quad_identifier)
+        dest_x, dest_y, dest_z = self.target
         x_error = dest_x - x
         y_error = dest_y - y
         z_error = dest_z - z
-        self.xi_term += self.LINEAR_I[0] * x_error
-        self.yi_term += self.LINEAR_I[1] * y_error
-        self.zi_term += self.LINEAR_I[2] * z_error
-        dest_x_dot = self.LINEAR_P[0] * x_error - self.LINEAR_D[0] * x_dot + self.xi_term
-        dest_y_dot = self.LINEAR_P[1] * y_error - self.LINEAR_D[1] * y_dot + self.yi_term
-        dest_z_dot = self.LINEAR_P[2] * z_error - self.LINEAR_D[2] * z_dot + self.zi_term
+        xi += self.LINEAR_I[0] * x_error
+        yi += self.LINEAR_I[1] * y_error
+        zi += self.LINEAR_I[2] * z_error
+        dest_x_dot = self.LINEAR_P[0] * x_error - self.LINEAR_D[0] * x_dot + xi
+        dest_y_dot = self.LINEAR_P[1] * y_error - self.LINEAR_D[1] * y_dot + yi
+        dest_z_dot = self.LINEAR_P[2] * z_error - self.LINEAR_D[2] * z_dot + zi
         throttle = np.clip(dest_z_dot, self.Z_LIMITS[0], self.Z_LIMITS[1])
         dest_theta = self.LINEAR_TO_ANGULAR_SCALER[0] * (dest_x_dot * math.sin(gamma) - dest_y_dot * math.cos(gamma))
         dest_phi = self.LINEAR_TO_ANGULAR_SCALER[1] * (dest_x_dot * math.cos(gamma) + dest_y_dot * math.sin(gamma))
@@ -71,58 +72,20 @@ class Controller_PID_Point2Point():
         theta_error = dest_theta - theta
         phi_error = dest_phi - phi
         gamma_dot_error = (self.YAW_RATE_SCALER * utils.wrap_angle(dest_gamma - gamma)) - gamma_dot
-        self.thetai_term += self.ANGULAR_I[0] * theta_error
-        self.phii_term += self.ANGULAR_I[1] * phi_error
-        self.gammai_term += self.ANGULAR_I[2] * gamma_dot_error
-        x_val = self.ANGULAR_P[0] * theta_error + self.ANGULAR_D[0] * (-theta_dot) + self.thetai_term
-        y_val = self.ANGULAR_P[1] * phi_error + self.ANGULAR_D[1] * (-phi_dot) + self.phii_term
-        z_val = self.ANGULAR_P[2] * gamma_dot_error + self.gammai_term
+        thetai += self.ANGULAR_I[0] * theta_error
+        phii += self.ANGULAR_I[1] * phi_error
+        gammai += self.ANGULAR_I[2] * gamma_dot_error
+        x_val = self.ANGULAR_P[0] * theta_error + self.ANGULAR_D[0] * (-theta_dot) + thetai
+        y_val = self.ANGULAR_P[1] * phi_error + self.ANGULAR_D[1] * (-phi_dot) + phii
+        z_val = self.ANGULAR_P[2] * gamma_dot_error + gammai
         z_val = np.clip(z_val, self.YAW_CONTROL_LIMITS[0], self.YAW_CONTROL_LIMITS[1])
         m1 = throttle + x_val + z_val
         m2 = throttle + y_val - z_val
         m3 = throttle - x_val + z_val
         m4 = throttle - y_val - z_val
         M = np.clip([m1, m2, m3, m4], self.MOTOR_LIMITS[0], self.MOTOR_LIMITS[1])
-        self.actuate_motors(self.quad_identifier, M)
-        return M
-
-    def update_sim(self, state):
-        [dest_x, dest_y, dest_z] = self.target
-        state[3:6] = utils.wrap_angle(state[3:6])
-        [x, y, z, x_dot, y_dot, z_dot, theta, phi, gamma, theta_dot, phi_dot, gamma_dot] = state
-        x_error = dest_x - x
-        y_error = dest_y - y
-        z_error = dest_z - z
-        self.xi_term_sim += self.LINEAR_I[0] * x_error
-        self.yi_term_sim += self.LINEAR_I[1] * y_error
-        self.zi_term_sim += self.LINEAR_I[2] * z_error
-        dest_x_dot = self.LINEAR_P[0] * x_error - self.LINEAR_D[0] * x_dot + self.xi_term_sim
-        dest_y_dot = self.LINEAR_P[1] * y_error - self.LINEAR_D[1] * y_dot + self.yi_term_sim
-        dest_z_dot = self.LINEAR_P[2] * z_error - self.LINEAR_D[2] * z_dot + self.zi_term_sim
-        throttle = np.clip(dest_z_dot, self.Z_LIMITS[0], self.Z_LIMITS[1])
-        dest_theta = self.LINEAR_TO_ANGULAR_SCALER[0] * (dest_x_dot * math.sin(gamma) - dest_y_dot * math.cos(gamma))
-        dest_phi = self.LINEAR_TO_ANGULAR_SCALER[1] * (dest_x_dot * math.cos(gamma) + dest_y_dot * math.sin(gamma))
-        dest_gamma = self.yaw_target
-        dest_theta, dest_phi = np.clip(dest_theta, self.TILT_LIMITS[0], self.TILT_LIMITS[1]), np.clip(dest_phi,
-                                                                                                      self.TILT_LIMITS[
-                                                                                                          0],
-                                                                                                      self.TILT_LIMITS[
-                                                                                                          1])
-        theta_error = dest_theta - theta
-        phi_error = dest_phi - phi
-        gamma_dot_error = (self.YAW_RATE_SCALER * utils.wrap_angle(dest_gamma - gamma)) - gamma_dot
-        self.thetai_term_sim += self.ANGULAR_I[0] * theta_error
-        self.phii_term_sim += self.ANGULAR_I[1] * phi_error
-        self.gammai_term_sim += self.ANGULAR_I[2] * gamma_dot_error
-        x_val = self.ANGULAR_P[0] * theta_error + self.ANGULAR_D[0] * (-theta_dot) + self.thetai_term_sim
-        y_val = self.ANGULAR_P[1] * phi_error + self.ANGULAR_D[1] * (-phi_dot) + self.phii_term_sim
-        z_val = self.ANGULAR_P[2] * gamma_dot_error + self.gammai_term_sim
-        z_val = np.clip(z_val, self.YAW_CONTROL_LIMITS[0], self.YAW_CONTROL_LIMITS[1])
-        m1 = throttle + x_val + z_val
-        m2 = throttle + y_val - z_val
-        m3 = throttle - x_val + z_val
-        m4 = throttle - y_val - z_val
-        M = np.clip([m1, m2, m3, m4], self.MOTOR_LIMITS[0], self.MOTOR_LIMITS[1])
+        if not sim:
+            self.actuate_motors(self.quad_identifier, M)
         return M
 
     def update_target(self, target):

@@ -1,10 +1,10 @@
 import numpy as np
 import utils
+import os
 import matplotlib
 matplotlib.use('TKAgg')
 
 import matplotlib.pyplot as plt
-import mpl_toolkits.mplot3d.axes3d as Axes3D
 import matplotlib.animation as animation
 
 '''
@@ -13,7 +13,7 @@ Originally from https://github.com/abhijitmajumdar/Quadcopter_simulator
 plt.rcParams["animation.convert_path"] = "C:/Program Files/ImageMagick-7.0.10-Q16-HDRI/magick.exe"
 
 
-class GUI():
+class GUI:
     # 'quad_list' is a dictionary of format: quad_list = {'quad_1_name':{'position':quad_1_position,'orientation':quad_1_orientation,'arm_span':quad_1_arm_span}, ...}
     def __init__(self, quads, quad, display_obstacles=False, plot_sim_trail=False, plot_quad_trail=False, save=False):
         self.quads = quads
@@ -61,6 +61,7 @@ class GUI():
             self.ani.save('test.gif', writer=writer)
         else:
             plt.show()
+            os._exit(0)
 
     def update(self, i):
         for key in self.quads:

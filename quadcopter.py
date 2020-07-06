@@ -3,6 +3,7 @@ import scipy.integrate
 import datetime
 import time
 import threading
+import controller
 import utils
 
 '''
@@ -56,6 +57,7 @@ class Quadcopter:
             self.quads[key]['I'] = np.array([[ixx, 0, 0], [0, iyy, 0], [0, 0, izz]])
             self.quads[key]['invI'] = np.linalg.inv(self.quads[key]['I'])
         self.last_sim_state = np.array([self.quads['q1']['state']])
+        self.k_d = 0
         self.run = True
 
     def set_controller(self, controller):
@@ -88,9 +90,9 @@ class Quadcopter:
         state_dot[0:3] = state[3:6]
 
         # The acceleration (x_dotdot)
-        x_dotdot = np.array([0, 0, -self.quads[key]['weight'] * self.g]) + (utils.rotation_matrix(state[6:9])
-                                                                            @ np.array([0, 0, (m1 + m2 + m3 + m4)])
-                                                                            / self.quads[key]['weight'])
+        x_dotdot = np.array([0, 0, -self.quads[key]['weight'] * self.g]) + \
+                   (utils.rotation_matrix(state[6:9]) @ np.array([0, 0, (m1 + m2 + m3 + m4)]) - self.k_d * state[3:6]) \
+                   / self.quads[key]['weight']
         state_dot[3:6] = x_dotdot
 
         # The angular rates(t+1 theta_dots equal the t theta_dots)
@@ -114,8 +116,16 @@ class Quadcopter:
 
     def control(self, state):
         """Return control inputs for quadcopter, given its current state"""
-        return self.controller.update(state, sim=True)
 
+        #return self.controller.update(state, sim=True)
+        u, u1_bar_prev = controller.Feedback_Linearization(0, [1, 0, 0, 0], state, self.quads['q1']['weight'],
+                                              1, 1, 1,
+                                              self.quads['q1']['I'][0, 0],
+                                              self.quads['q1']['I'][1, 1],
+                                              self.quads['q1']['I'][2, 2])
+        u_prev, xi, zeta = u1_bar_prev
+        print(u)
+        return np.array(u)
     def simulate_dynamics(self, total_time):
         """Simulate quadcopter dynamics over finite time horizon and return final states"""
         states = []

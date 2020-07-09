@@ -23,7 +23,7 @@ YAWS = [0]
 
 # Define quadcopter properties
 QUADCOPTER = {
-    'q1': {'position': [3, 3, 1],
+    'q1': {'position': [2, 2, 4],
            'orientation': [0, 0, 0],
            'L': 0.3,
            'r': 0.1,
@@ -43,14 +43,14 @@ CONTROLLER_PARAMETERS = {'Motor_limits': [4000, 9000],
 
 # Make objects for quadcopter, gui and controller
 quad = quadcopter.Quadcopter(QUADCOPTER, time_horizon=time_horizon)
-ctrl = controller.Controller_PID_Point2Point(quad.get_state, quad.get_time, quad.set_motor_speeds,
-                                             params=CONTROLLER_PARAMETERS, quad_identifier='q1')
-quad.set_controller(ctrl)
+#ctrl = controller.Controller_PID_Point2Point(quad.get_state, quad.get_time, quad.set_motor_speeds,
+#                                             params=CONTROLLER_PARAMETERS, quad_identifier='q1')
+#quad.set_controller(ctrl)
 
 # Start the threads
 quad.start_thread(dt=QUAD_DYNAMICS_UPDATE, time_scaling=TIME_SCALING)
-ctrl.start_thread(update_rate=CONTROLLER_DYNAMICS_UPDATE, time_scaling=TIME_SCALING)
-for goal, y in zip(WAYPOINTS, YAWS):
-    ctrl.update_target(goal)
-    ctrl.update_yaw_target(y)
+#ctrl.start_thread(update_rate=CONTROLLER_DYNAMICS_UPDATE, time_scaling=TIME_SCALING)
+#for goal, y in zip(WAYPOINTS, YAWS):
+#    ctrl.update_target(goal)
+#    ctrl.update_yaw_target(y)
 ui = gui.GUI(QUADCOPTER, quad, display_obstacles, plot_sim_trail, plot_quad_trail, save)

@@ -50,14 +50,14 @@ class GUI:
             self.artists.append(self.quads[key]['l2'])
             self.artists.append(self.quads[key]['hub'])
         self.artists = tuple(self.artists)
-        self.ax.view_init(elev=30, azim=10)
+        self.ax.view_init(elev=30, azim=45)
         self.ani = animation.FuncAnimation(self.fig, self.update, frames=400, init_func=None,
-                                           interval=10, blit=True)
+                                           interval=5, blit=True)
         if save:
             # Interval : Amount of time, in ms between generated frames
             # Frames: Number of frames to produce
             # FPS: 1/(interval*0.001) -> multiple by number of seconds needed for number of frames
-            writer = animation.ImageMagickFileWriter(fps=1 / (10 * 0.001))
+            writer = animation.ImageMagickFileWriter(fps=1 / (5 * 0.001))
             self.ani.save('test.gif', writer=writer)
         else:
             plt.show()
@@ -67,7 +67,7 @@ class GUI:
         for key in self.quads:
             state = self.quad.get_state(key)
             self.quads[key]['position'] = state[0:3]
-            self.quads[key]['orientation'] = state[6:9]
+            self.quads[key]['orientation'] = state[3:6]
             R = utils.rotation_matrix(self.quads[key]['orientation'])
             L = self.quads[key]['L']
             points = R @ np.array([[-L, 0, 0], [L, 0, 0], [0, -L, 0], [0, L, 0], [0, 0, 0], [0, 0, 0]]).T
@@ -88,7 +88,7 @@ class GUI:
             if self.plot_sim_trail:
                 sim = self.quad.last_sim_state
                 sim_x = sim[:, 0]
-                sim_y = sim[:, 1]
-                sim_z = sim[:, 2]
+                sim_y = sim[:, 4]
+                sim_z = sim[:, 8]
                 self.sim_trail.set_data_3d(sim_x, sim_y, sim_z)
         return self.artists

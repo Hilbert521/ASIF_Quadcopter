@@ -88,3 +88,4 @@ if solve_z:
     grad = Matrix([[var.diff(v) for v in variables]])
     Lf_1 = (grad * f_bar)
     print(Lf_1)
+print("----------------------------------------")

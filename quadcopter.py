@@ -40,6 +40,7 @@ class Quadcopter:
             self.quads[key]['invI'] = np.linalg.inv(self.quads[key]['I'])
         #        self.last_sim_state = np.array(self.x_bar_to_z(self.quads['q1']['state'], 'q1'))
         self.k_d = 0
+        self.err_i = 0
         self.run = True
 
     def state_dot(self, t, state, key, method="Zero_Dynamic_Stabilization"):
@@ -133,17 +134,18 @@ class Quadcopter:
                                    0,
                                    0])
 
-            psi_desireds = np.array([a * t / (2 * np.pi),
-                                     a / (2 * np.pi),
+            psi_desireds = np.array([0,
+                                     0,
                                      0])
             '''x_desireds = np.array([3, 0, 0, 0, 0])
             y_desireds = np.array([3, 0, 0, 0, 0])
-            z_desireds = np.array([4, 0, 0])
+            z_desireds = np.array([2.1, 0, 0])
             psi_desireds = np.array([0, 0, 0])'''
 
             u1, u2, u3, u4 = self.control(t, state, key, "Zero_Dynamic_Stabilization",
                                           x_desireds=x_desireds, y_desireds=y_desireds,
                                           z_desireds=z_desireds, psi_desireds=psi_desireds)
+
             self.u1_prev = u1
 
             x, y, z, psi, theta, phi, x_dot, y_dot, z_dot, p, q, r = state
@@ -162,6 +164,7 @@ class Quadcopter:
             state_dot[4] = q * cp - r * sp
             state_dot[5] = p + q * sp * tt + r * cp * tt
 
+            # Linear Accelerations
             state_dot[6] = - u1 * (sp * ss + cp * cs * st) / m
             state_dot[7] = - u1 * (cs * sp - cp * ss * st) / m
             state_dot[8] = self.g - u1 * cp * ct / m
@@ -169,13 +172,13 @@ class Quadcopter:
             # Angular Accelerations
             state_dot[9] = q * r * (Iy - Iz) / Ix + u2 / Ix
             state_dot[10] = p * r * (Iz - Ix) / Iy + u3 / Iy
-            state_dot[11] = 0 + u4 / Iz
+            state_dot[11] = p * q * (Ix - Iy) / Iz + u4 / Iz
+            #print(u1, u2, u3, u4, state[0:3], state[3:6])
             return state_dot
 
         elif method.lower() == "Regular_Dynamics".lower():
             if np.array(state).shape[0] != 12:
                 raise ValueError("State should be 12-dimensional!")
-            state_dot = np.zeros(12)
 
             # Define motor thrusts, based on whether function is used to simulate future or present trajectory
             control_input = self.control(state)
@@ -281,9 +284,8 @@ class Quadcopter:
                 raise ValueError("psi_desireds must be 3-dimensional")
 
             u = self.u1_prev
-            k_11 = 1
-            k_12 = 2
-
+            k_11 = 4
+            k_12 = 4
             x_d, x_dot_d, x_dot_dot_d, x_3_d, x_4_d = x_desireds
             y_d, y_dot_d, y_dot_dot_d, y_3_d, y_4_d = y_desireds
             z_d, z_dot_d, z_dot_dot_d = z_desireds
@@ -293,18 +295,18 @@ class Quadcopter:
 
             # Outer Layer 3
             theta_d = -m / u * (x_dot_dot_d + k_11 * (x_dot_d - x_dot) + k_12 * (x_d - x))
-            phi_d = m / u * (y_dot_dot_d + k_11 * (y_dot_d - y_dot) + k_12 * (y_d - y))
+            phi_d = -m / u * (y_dot_dot_d + k_11 * (y_dot_d - y_dot) + k_12 * (y_d - y))
 
             theta_dot_d = -m / u * (x_3_d + k_11 * (x_dot_dot_d + u / m * theta) + k_12 * (x_dot_d - x_dot))
-            phi_dot_d = m / u * (y_3_d + k_11 * (y_dot_dot_d - u / m * phi) + k_12 * (y_dot_d - y_dot))
+            phi_dot_d = -m / u * (y_3_d + k_11 * (y_dot_dot_d + u / m * phi) + k_12 * (y_dot_d - y_dot))
 
             theta_dot_dot_d = -m / u * (x_4_d + k_11 * (x_3_d + u / m * q) + k_12 * (x_dot_dot_d + u / m * theta))
-            phi_dot_dot_d = m / u * (y_4_d + k_11 * (y_3_d - u / m * p) + k_12 * (y_dot_dot_d - u / m * phi))
+            phi_dot_dot_d = -m / u * (y_4_d + k_11 * (y_3_d + u / m * p) + k_12 * (y_dot_dot_d + u / m * phi))
 
             # Inner Layer 2
-            K_v = np.eye(4)
+            K_v = 4*np.eye(4)
 
-            K_p = 2 * np.eye(4)
+            K_p = 4*np.eye(4)
 
             x_vec_q = np.array([z, phi, theta, psi])
             x_vec_q_d = np.array([z_d, phi_d, theta_d, psi_d])
@@ -315,9 +317,12 @@ class Quadcopter:
             x_vec_dot_dot_q_d = np.array([z_dot_dot_d, phi_dot_dot_d, theta_dot_dot_d, psi_dot_dot_d])
 
             v = x_vec_dot_dot_q_d - K_v @ (x_vec_dot_q - x_vec_dot_q_d) - K_p @ (x_vec_q - x_vec_q_d)
-
+            #print(x_vec_dot_dot_q_d, -(K_v @ (x_vec_dot_q - x_vec_dot_q_d)), -(K_p @ (x_vec_q - x_vec_q_d)), v[2])
+            #print(phi_dot_dot_d)
             # FBL Layer 1
             u_vec = controller.Feedback_Linearization_Zero_Dynamics(v, state, m, Ix, Iy, Iz)
+            if any([component > 1e7 for component in u_vec]):
+                raise ValueError("Control input is blowing up", u_vec > 1e7)
             return u_vec
 
         elif method.lower() == "Regular_Dynamics".lower():
@@ -384,8 +389,8 @@ class Quadcopter:
     def update(self, dt):
         # self.simulate_dynamics(self.time_horizon)
         for key in self.quads:
-            self.ode.set_initial_value(self.quads[key]['state'], self.ode.t).set_f_params(str(key),
-                                                                                          "Zero_Dynamic_Stabilization", )
+            self.ode.set_initial_value(self.quads[key]['state'], self.ode.t)
+            self.ode.set_f_params(str(key), "Zero_Dynamic_Stabilization", )
             self.quads[key]['state'] = self.ode.integrate(self.ode.t + dt)
             self.quads[key]['state'][3:6] = utils.wrap_angle(self.quads[key]['state'][3:6])
             #print(self.quads[key]['state'])

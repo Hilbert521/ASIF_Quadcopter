@@ -22,8 +22,8 @@ YAWS = [0]
 
 # Define quadcopter properties
 QUADCOPTER = {
-    'q1': {'position': [2, 2, 2],
-           'orientation': [3, 2, 0],
+    'q1': {'position': [0, 2, 2],
+           'orientation': [0, 0, 0],
            'L': 0.3,
            'r': 0.1,
            'prop_size': [10, 4.5],

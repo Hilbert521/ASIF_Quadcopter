@@ -54,17 +54,17 @@ def Feedback_Linearization_Zero_Dynamics(v, x_state, m, Ix, Iy, Iz):
                       [0, 0, 1/Iy, 0],
                       [0, 0, 0, 1/Iz]])
 
-    b = np.array([-g,
+    b = np.array([g,
                   q*r*(Iy-Iz)/Ix,
                   p*r*(Iz-Ix)/Iy,
-                  0])
+                  p*q*(Ix-Iy)/Iz])
 
     try:
         d_inv = np.linalg.inv(delta)
         alpha = -d_inv @ b
         beta = d_inv
-        u_bar = alpha + beta @ v
-        return u_bar
+        u = alpha + beta @ v
+        return u
     except np.linalg.LinAlgError:
         print("Matrix Non-Invertible!")
         return [0,0,0,0]

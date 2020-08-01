@@ -7,7 +7,6 @@ matplotlib.use('TKAgg')
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import profilehooks
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection
 
 '''
 Originally from https://github.com/abhijitmajumdar/Quadcopter_simulator
@@ -118,10 +117,10 @@ class GUI:
                     self.trail.set_data_3d(self.x, self.y, self.z)
 
             if self.plot_sim_trail:
-                sim = self.quad.last_sim_state
+                sim = np.array(self.quad.last_sim_state)
                 sim_x = sim[:, 0]
-                sim_y = sim[:, 4]
-                sim_z = sim[:, 8]
+                sim_y = sim[:, 1]
+                sim_z = sim[:, 2]
                 self.sim_trail.set_data_3d(sim_x, sim_y, sim_z)
 
             '''bounds = self.quad.get_bounds(self.t, 0.01)

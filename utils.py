@@ -6,24 +6,23 @@ def rotation_matrix(angles):
     """
     Calculates rotation matrix in ZYX form
 
-    :param angles: [x_axis (theta), y_axis (phi), z_axis (gamma)]
+    :param angles: [z axis(psi), y axis(theta), x axis(phi)]
     :return: Rotation matrix
     """
 
-    ct, cp, cg = np.cos(angles)
-    st, sp, sg = np.sin(angles)
+    cs, ct, cp = np.cos(angles)
+    ss, st, sp = np.sin(angles)
 
     R_x = np.array([[1, 0, 0],
-                    [0, ct, -st],
-                    [0, st, ct]])
-    R_y = np.array([[cp, 0, sp],
+                    [0, cp, -sp],
+                    [0, sp, cp]])
+    R_y = np.array([[ct, 0, st],
                     [0, 1, 0],
-                    [-sp, 0, cp]])
-    R_z = np.array([[cg, -sg, 0],
-                    [sg, cg, 0],
+                    [-st, 0, ct]])
+    R_z = np.array([[cs, -ss, 0],
+                    [ss, cs, 0],
                     [0, 0, 1]])
     return R_z @ R_y @ R_x
-
 
 def wrap_angle(angle):
     """

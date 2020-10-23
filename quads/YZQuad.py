@@ -1,6 +1,7 @@
-
 import numpy as np
-from quadcopter import Quadcopter
+import time
+from quads.quadcopter import Quadcopter
+
 
 class YZQuad(Quadcopter):
     # State = [y, z, vy, vz, phi, omega_x]
@@ -10,21 +11,22 @@ class YZQuad(Quadcopter):
         self.g = 9.81
         self.state = initial_state
 
-    def state_dot(self, t, state):
+    def state_dot(self, t, state, inputs):
         y, z, vy, vz, phi, omega_x = state
+        tau, Mx = inputs
+
         state_dot = np.zeros(6)
 
-        tau = 0
         state_dot[0] = vy
         state_dot[1] = vz
-        state_dot[2] = (tau*np.sin(phi))/self.m
-        state_dot[3] = (self.m*self.g - tau*np.cos(phi))
+        state_dot[2] = (tau * np.sin(phi)) / self.m
+        state_dot[3] = (self.m * self.g - tau * np.cos(phi))
         state_dot[4] = omega_x
-        Mx = 0.01
-        state_dot[5] = Mx/self.Ix
+        state_dot[5] = Mx / self.Ix
         return state_dot
 
     def update(self, new_state):
+        time.sleep(1e-9)
         self.state = new_state
 
     def get_position(self):

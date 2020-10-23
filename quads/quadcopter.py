@@ -6,7 +6,7 @@ Abstract class/interface for a quadcopter model
 class Quadcopter(ABC):
 
     # Return x' for the simulator to integrate
-    def state_dot(self, t, state):
+    def state_dot(self, t, state, inputs):
         pass
 
     # Retrieve updated state from simulator

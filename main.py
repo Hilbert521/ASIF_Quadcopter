@@ -12,7 +12,7 @@ dt = 0.005
 Quadcopter Parameters
 '''
 
-queue = multiprocessing.Queue()
+
 
 # Make objects for quadcopter
 sim = Simulator(dt=dt)

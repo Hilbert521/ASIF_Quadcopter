@@ -14,8 +14,9 @@ Originally from https://github.com/abhijitmajumdar/Quadcopter_simulator
 plt.rcParams["animation.convert_path"] = "C:/Program Files/ImageMagick-7.0.10-Q16-HDRI/magick.exe"
 
 class GUI:
-    def __init__(self, quads):
+    def __init__(self, quads, queue):
         self.quads = quads
+        self.queue = queue
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot(1, 1, 1, projection='3d')
         self.fig.tight_layout(rect=[0, 0, 1, 0.97])

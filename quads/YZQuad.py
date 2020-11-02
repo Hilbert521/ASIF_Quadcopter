@@ -26,7 +26,8 @@ class YZQuad(Quadcopter):
         return state_dot
 
     def update(self, new_state):
-        time.sleep(1e-9)
+        #time.sleep(1e-9)
+        #print()
         self.state = new_state
 
     def get_position(self):

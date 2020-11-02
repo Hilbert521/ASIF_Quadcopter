@@ -1,16 +1,19 @@
 from gui import GUI
 import threading
 import scipy.integrate
+import multiprocessing
 import time
 
 class Simulator():
     def __init__(self, dt):
         self.quads = []
+        self.t = time.time()
         self.quad_groups=[]
         self.quad_list = []
         self.threads = []
         self.GUI = None
-        self.dt = dt
+        self.dt = 0.005
+        self.queue = multiprocessing.Queue()
         self.run = True
 
     def add_quad(self, quad, controller=None):
@@ -25,6 +28,11 @@ class Simulator():
         self.quad_groups.append({"quads": quads, "integrators": integrators, "controller": controller})
 
     def begin(self):
+        # Get controller inputs from current states
+        # Run integrator threads, update quadcopter states
+        # Wait until maximum of threads finished or dt hit
+        # Update gui
+        # Repeat
         self.run = True
         for i in range(0, len(self.quads)):
             self.threads.append(threading.Thread(target=self.simulate_quad, args=(i,)))
@@ -32,7 +40,7 @@ class Simulator():
             self.threads.append(threading.Thread(target=self.simulate_quad_group, args=(i,)))
         for thread in self.threads:
             thread.start()
-        self.GUI = GUI(quads=self.quad_list)
+        self.GUI = GUI(quads=self.quad_list, queue=self.queue)
 
     def stop(self):
         self.run = False
@@ -47,8 +55,11 @@ class Simulator():
         for index, integrator in enumerate(self.quad_groups[i]["integrators"]):
             integrator.set_initial_value(self.quad_groups[i]['quads'][index].get_state(), 0)
         while self.run:
-            inputs = self.quad_groups[i]['controller'].generate_inputs([quad.get_state() for quad in self.quad_groups[i]['quads']])
-            for index, integrator in enumerate(self.quad_groups[i]["integrators"]):
-                integrator.set_f_params(inputs[index],)
-                self.quad_groups[i]['quads'][index].update(integrator.integrate(integrator.t + self.dt))
+            if time.time()-self.t >= self.dt:
+                inputs = self.quad_groups[i]['controller'].generate_inputs([quad.get_state() for quad in self.quad_groups[i]['quads']])
+                for index, integrator in enumerate(self.quad_groups[i]["integrators"]):
+                    integrator.set_f_params(inputs[index],)
+                    self.quad_groups[i]['quads'][index].update(integrator.integrate(integrator.t + self.dt))
+                print(time.time()-self.t)
+                self.t = time.time()
             time.sleep(0)
